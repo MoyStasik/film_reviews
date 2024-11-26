@@ -4,7 +4,7 @@
 // - protoc             v5.28.3
 // source: authv1/auth.proto
 
-package authv1
+package auth_grpc
 
 import (
 	context "context"

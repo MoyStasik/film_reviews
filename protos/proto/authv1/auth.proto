@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "MoyStasik.auth.v1;authv1";
+option go_package = "github.com/MoyStasik/film_reviews/auth_grpc";
 
 service Auth {
     rpc Register (RegisterRequest) returns (RegisterResponse);
