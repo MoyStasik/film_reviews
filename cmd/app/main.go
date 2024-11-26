@@ -22,7 +22,7 @@ func signupHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Signup")
 }
 
-func run() {
+func run(addr string) {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexHandler)
 	router.HandleFunc("/login", loginHandler)
@@ -30,10 +30,10 @@ func run() {
 	http.Handle("/", router)
 
 	fmt.Println("Server is listening on port 8888")
-	http.ListenAndServe(":8888", nil)
+	http.ListenAndServe(addr, nil)
 }
 
 func main() {
-	run()
+	go run(":8888")
 
 }
