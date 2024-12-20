@@ -34,6 +34,7 @@ func run(addr string) {
 }
 
 func main() {
-	go run(":8888")
+
+	run(":8888")
 
 }

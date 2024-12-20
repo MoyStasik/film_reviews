@@ -1,0 +1,24 @@
+services:
+  film_reviews:
+    container_name: film_reviews
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    depends_on:
+      postgres:
+        condition: service_started
+    restart: always
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./uploads:/uploads
+  
+  postgres:
+    image: postgres:15.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1906
+    # ports:
+    #   - "127.0.0.1:54320:54320"
+    # volumes:
+    #   - ./db/migrations:/docker-entrypoint-initdb.d
