@@ -74,3 +74,12 @@ INSERT INTO film VALUES (
 INSERT INTO review VALUES (
  1, 4, 1, 'Хороший фильм, рекомендую!', '5'
 );
+INSERT INTO review VALUES (
+ 2, 3, 1, 'Крутой фильм, посмотрите обязательно!!!', '5'
+);
+INSERT INTO review VALUES (
+ 3, 2, 1, 'Хороший фильм, но есть косяки!', '4'
+);
+INSERT INTO review VALUES (
+ 4, 4, 2, 'Так круто, я сразу даже не понял, что произошло.', '5'
+);
