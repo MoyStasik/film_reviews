@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	ssov1 "github.com/Lesha222/protos/gen/go/sso"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
@@ -71,6 +72,14 @@ type loginDTO struct {
 	Password string
 }
 
+type UserClaims struct {
+	UID   string `json:"uid"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	AppID string `json:"app_id"`
+	jwt.RegisteredClaims
+}
+
 type registerDTO struct {
 	Email    string
 	Name     string
@@ -79,6 +88,27 @@ type registerDTO struct {
 
 func (h *Handler) indexHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Index")
+}
+
+func VerifyToken(tokenString string, appSecret string) (string, error) {
+
+	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (any, error) {
+		// Проверяем алгоритм подписи
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(appSecret), nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(*UserClaims); ok && token.Valid {
+		return claims.Email, nil
+	}
+
+	return "", fmt.Errorf("invalid token")
 }
 
 func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
@@ -114,6 +144,8 @@ func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonResp)
+	var secretKey string = "GOIDA"
+	fmt.Println(VerifyToken(string(jsonResp), secretKey))
 
 }
 
