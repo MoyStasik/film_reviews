@@ -15,6 +15,24 @@ services:
     volumes:
       - ./uploads:/uploads
   
+  sso:
+    container_name: films_auth
+    build:
+      context: .
+      dockerfile: ./sso/cmd/sso/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_started
+      film_reviews:
+        condition: service_started
+    restart: always
+    ports:
+      - "44444:44444"
+    networks:
+      - app-network
+    volumes:
+      - ./uploads:/uploads
+
   postgres:
     container_name: postgres_reviews
     image: postgres:15.0

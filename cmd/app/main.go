@@ -36,6 +36,17 @@ type filmReview struct {
 	ReviewValue   string
 }
 
+type userReviews struct {
+	UserId        int //заменить на name
+	FilmId        int
+	ReviewContent string
+	ReviewValue   string
+}
+
+type usersReviewsDTO struct {
+	FilmsReview []userReviews
+}
+
 type filmsReviewsDTO struct {
 	FilmsReview []filmReview
 }
@@ -201,6 +212,59 @@ func (h *Handler) filmReviewHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// GET all reviews by userId
+func (h *Handler) userReviewsHandler(w http.ResponseWriter, req *http.Request) {
+	log.Printf("Пришел запрос: %v\n", req.URL.Query())
+	var userId = req.URL.Query().Get("user_id")
+	conn, err := h.pool.Acquire(context.Background())
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+	defer conn.Release()
+	rows, err := conn.Query(context.Background(), `SELECT review.user_id, review.film_id, review_content, review_value FROM review
+														WHERE review.user_id = $1;`, userId)
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+
+	filmsReview := []userReviews{}
+	for rows.Next() {
+		var userId int
+		var filmId int
+		var reviewContent string
+		var reviewValue string
+
+		err = rows.Scan(&userId, &filmId, &reviewContent, &reviewValue)
+
+		if err != nil {
+			log.Printf("Failed to scan row: %v", err)
+		}
+
+		filmsReview = append(filmsReview, userReviews{
+			UserId:        userId,
+			FilmId:        filmId,
+			ReviewContent: reviewContent,
+			ReviewValue:   reviewValue,
+		})
+	}
+
+	filmReviewsDto := usersReviewsDTO{
+		FilmsReview: filmsReview,
+	}
+
+	jsonResp, err := json.Marshal(filmReviewsDto)
+
+	if err != nil {
+		log.Printf("error happened in JSON marshal. Err: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonResp)
+	log.Printf("jsonResp: %v", jsonResp)
+	log.Printf("Scan row: %v", filmsReview)
+}
+
 func run(addr string) {
 	ctx := context.Background()
 	pool, err := pgxpool.Connect(ctx, "postgres://postgres:1906@postgres_reviews:5432/reviews")
@@ -222,6 +286,7 @@ func run(addr string) {
 	router.HandleFunc("/films", handler.filmsHandler).Methods("GET")
 	router.HandleFunc("/filmReviews", handler.filmReviewsHandler).Methods("GET")
 	router.HandleFunc("/filmReview", handler.filmReviewHandler).Methods("POST")
+	router.HandleFunc("/userReviews", handler.userReviewsHandler).Methods("GET")
 	http.Handle("/", router)
 
 	fmt.Println("Server is listening on port 8888")
