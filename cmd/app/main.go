@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	ssov1 "github.com/Lesha222/protos/gen/go/sso"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
@@ -15,8 +16,54 @@ import (
 type Handler struct {
 	pool pgxpool.Pool
 
-	//client ssov1.AuthClient
+	client ssov1.AuthClient
 }
+
+// func New(ctx context.Context, addr string) (*Handler, error) {
+// 	cc, err := grpc.DialContext(ctx, addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return &Handler{
+// 		client: ssov1.NewAuthClient(cc),
+// 	}, nil
+// }
+
+// func (h *Handler) IsAdmin(ctx context.Context, userId int64) bool {
+
+// 	response, err := h.client.IdAdmin(ctx, &ssov1.AdminRequest{UserId: 1})
+// 	if err != nil {
+// 		return false
+// 	}
+// 	return response.IsAdmin
+
+// }
+
+// func Login(uesrname string, password string) (token string) {
+
+// 	conn, err := grpc.NewClient("localhost:44444", grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+// 	if err != nil {
+// 		fmt.Println("not connect: ", err)
+// 		return ""
+// 	}
+// 	defer conn.Close()
+
+// 	client := ssov1.NewAuthClient(conn)
+
+// 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+// 	defer cancel()
+
+// 	request := &ssov1.AdminRequest{UserId: 1}
+
+// 	response, err := client.IdAdmin(ctx, request)
+// 	if err != nil {
+// 		fmt.Println("could not greet: ", err)
+// 		return ""
+// 	}
+// 	return response.String()
+// }
 
 type filmStruct struct {
 	FilmId       int
@@ -52,7 +99,13 @@ type filmReviewDTO struct {
 }
 
 func (h *Handler) indexHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(w, "Index")
+
+	// client, err := New(context.Background(), "localhost:44444")
+	// if err != nil {
+	// 	fmt.Println("error", client)
+	// }
+
+	fmt.Fprint(w, "test")
 }
 
 func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
@@ -225,6 +278,7 @@ func run(addr string) {
 	http.Handle("/", router)
 
 	fmt.Println("Server is listening on port 8888")
+
 	http.ListenAndServe(addr, nil)
 }
 
