@@ -7,15 +7,18 @@ import (
 	"log"
 	"net/http"
 
+	ssov1 "github.com/Lesha222/protos/gen/go/sso"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Handler struct {
 	pool pgxpool.Pool
 
-	//client ssov1.AuthClient
+	client ssov1.AuthClient
 }
 
 type filmStruct struct {
@@ -62,16 +65,91 @@ type filmReviewDTO struct {
 	Film filmSendReview
 }
 
+type loginDTO struct {
+	appId    int
+	Email    string
+	Password string
+}
+
+type registerDTO struct {
+	Email    string
+	Name     string
+	Password string
+}
+
 func (h *Handler) indexHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Index")
 }
 
 func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(w, "Login")
+	var creds loginDTO
+	if err := json.NewDecoder(req.Body).Decode(&creds); err != nil {
+		http.Error(w, "Invalid input data", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := h.pool.Acquire(context.Background())
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+	defer conn.Release()
+	loginResponse := &ssov1.LoginResponse{}
+	loginResponse, err = h.client.Login(req.Context(), &ssov1.LoginRequest{
+		AppId:    1,
+		Email:    creds.Email,
+		Password: creds.Password,
+	})
+
+	if err != nil {
+		log.Printf("Ошибка логина %v", err)
+	} else {
+		log.Printf("%v", loginResponse)
+	}
+	jsonResp, err := json.Marshal(loginResponse)
+
+	if err != nil {
+		log.Printf("error happened in JSON marshal. Err: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonResp)
+
 }
 
 func (h *Handler) signupHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprint(w, "Signup")
+	var creds registerDTO
+	if err := json.NewDecoder(req.Body).Decode(&creds); err != nil {
+		http.Error(w, "Invalid input data", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := h.pool.Acquire(context.Background())
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+	registerResponse := &ssov1.RegisterResponse{}
+	defer conn.Release()
+	registerResponse, err = h.client.Register(req.Context(), &ssov1.RegisterRequest{
+		Email:    creds.Email,
+		Name:     creds.Name,
+		Password: creds.Password,
+	})
+
+	if err != nil {
+		log.Printf("Ошибка регистрации %v", err)
+	} else {
+		log.Printf("%v", registerResponse)
+	}
+	jsonResp, err := json.Marshal(registerResponse)
+
+	if err != nil {
+		log.Printf("error happened in JSON marshal. Err: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonResp)
 
 }
 
@@ -275,14 +353,23 @@ func run(addr string) {
 
 	defer pool.Close()
 
+	grpcConnAuth, err := grpc.Dial(
+		"films_auth:44444",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+
+	defer grpcConnAuth.Close()
+	authClient := ssov1.NewAuthClient(grpcConnAuth)
+
 	handler := Handler{
-		pool: *pool,
+		pool:   *pool,
+		client: authClient,
 	}
 
 	router := mux.NewRouter()
 	router.HandleFunc("/", handler.indexHandler)
-	router.HandleFunc("/login", handler.loginHandler)
-	router.HandleFunc("/signup", handler.signupHandler)
+	router.HandleFunc("/login", handler.loginHandler).Methods("POST")
+	router.HandleFunc("/signup", handler.signupHandler).Methods("POST")
 	router.HandleFunc("/films", handler.filmsHandler).Methods("GET")
 	router.HandleFunc("/filmReviews", handler.filmReviewsHandler).Methods("GET")
 	router.HandleFunc("/filmReview", handler.filmReviewHandler).Methods("POST")
