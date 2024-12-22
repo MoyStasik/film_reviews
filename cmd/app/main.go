@@ -36,8 +36,19 @@ type filmReview struct {
 	ReviewValue   string
 }
 
-type filmsReviewDTO struct {
+type filmsReviewsDTO struct {
 	FilmsReview []filmReview
+}
+
+type filmSendReview struct {
+	UserId        int
+	FilmId        int
+	ReviewContent string
+	ReviewValue   string
+}
+
+type filmReviewDTO struct {
+	Film filmSendReview
 }
 
 func (h *Handler) indexHandler(w http.ResponseWriter, req *http.Request) {
@@ -53,6 +64,7 @@ func (h *Handler) signupHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// GET all reviews for film by query param id
 func (h *Handler) filmReviewsHandler(w http.ResponseWriter, req *http.Request) {
 	log.Printf("Пришел запрос: %v\n", req.URL.Query())
 	var filmId = req.URL.Query().Get("film_id")
@@ -86,11 +98,11 @@ func (h *Handler) filmReviewsHandler(w http.ResponseWriter, req *http.Request) {
 		})
 	}
 
-	filmReviewDto := filmsReviewDTO{
+	filmReviewsDto := filmsReviewsDTO{
 		FilmsReview: filmsReview,
 	}
 
-	jsonResp, err := json.Marshal(filmReviewDto)
+	jsonResp, err := json.Marshal(filmReviewsDto)
 
 	if err != nil {
 		log.Printf("error happened in JSON marshal. Err: %s", err)
@@ -103,6 +115,7 @@ func (h *Handler) filmReviewsHandler(w http.ResponseWriter, req *http.Request) {
 	log.Printf("Scan row: %v", filmsReview)
 }
 
+// GET all films
 func (h *Handler) filmsHandler(w http.ResponseWriter, req *http.Request) {
 	conn, err := h.pool.Acquire(context.Background())
 	if err != nil {
@@ -151,8 +164,40 @@ func (h *Handler) filmsHandler(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonResp)
-	log.Printf("jsonResp: %v", jsonResp)
+	log.Printf("jsonesp: %v", jsonResp)
 	log.Printf("Scan row: %v", films)
+
+}
+
+// POST review on film
+func (h *Handler) filmReviewHandler(w http.ResponseWriter, req *http.Request) {
+	var creds filmReviewDTO
+	if err := json.NewDecoder(req.Body).Decode(&creds); err != nil {
+		http.Error(w, "Invalid input data", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := h.pool.Acquire(context.Background())
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+	defer conn.Release()
+	rows := h.pool.QueryRow(context.Background(), `INSERT INTO review (
+																user_id,
+																film_id,
+																review_content,
+																review_value
+																) VALUES ($1, $2, $3, $4);`,
+		creds.Film.UserId,
+		creds.Film.FilmId,
+		creds.Film.ReviewContent,
+		creds.Film.ReviewValue)
+	if err != nil {
+		log.Printf("Unable to acquire a database connection: %v\n", err)
+	}
+
+	log.Printf("film review post: %v", creds.Film.ReviewValue)
+	log.Printf("film review request: %v", rows.Scan())
 
 }
 
@@ -176,6 +221,7 @@ func run(addr string) {
 	router.HandleFunc("/signup", handler.signupHandler)
 	router.HandleFunc("/films", handler.filmsHandler).Methods("GET")
 	router.HandleFunc("/filmReviews", handler.filmReviewsHandler).Methods("GET")
+	router.HandleFunc("/filmReview", handler.filmReviewHandler).Methods("POST")
 	http.Handle("/", router)
 
 	fmt.Println("Server is listening on port 8888")

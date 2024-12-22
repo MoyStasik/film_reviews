@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS film_category(
 );
 
 CREATE TABLE IF NOT EXISTS film (
- id int primary key,
+ id int NOT NULL GENERATED ALWAYS AS,
  film_category_id int not NULL,
  film_name text NOT NULL,
  img_path text NOT NULL,
@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS review (
  review_value film_review_value NOT NULL,
  FOREIGN KEY (film_id) REFERENCES film (id)
 );
+
+ALTER TABLE film_category ADD COLUMN 
 
 INSERT INTO film_category VALUES (
  1, 'боевик'
