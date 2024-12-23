@@ -73,10 +73,10 @@ type loginDTO struct {
 }
 
 type UserClaims struct {
-	UID   string `json:"uid"`
+	UID   int    `json:"uid"`
 	Email string `json:"email"`
 	Name  string `json:"name"`
-	AppID string `json:"app_id"`
+
 	jwt.RegisteredClaims
 }
 
@@ -90,25 +90,25 @@ func (h *Handler) indexHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Index")
 }
 
-func VerifyToken(tokenString string, appSecret string) (string, error) {
+func VerifyToken(tokenString string, appSecret []byte) (*UserClaims, error) {
 
-	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (any, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Проверяем алгоритм подписи
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(appSecret), nil
+		return appSecret, nil
 	})
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if claims, ok := token.Claims.(*UserClaims); ok && token.Valid {
-		return claims.Email, nil
+		return claims, nil
 	}
 
-	return "", fmt.Errorf("invalid token")
+	return nil, fmt.Errorf("invalid token")
 }
 
 func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
@@ -144,8 +144,13 @@ func (h *Handler) loginHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonResp)
-	var secretKey string = "GOIDA"
-	fmt.Println(VerifyToken(string(jsonResp), secretKey))
+
+	claims, err := VerifyToken(loginResponse.Token, []byte("GOIDA"))
+	if err != nil {
+		fmt.Println("Error verifying token:", err)
+		return
+	}
+	fmt.Println(claims.Email)
 
 }
 

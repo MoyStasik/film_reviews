@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"log/slog"
 	"sso/internal/domain/models"
 	"time"
 
@@ -8,17 +9,23 @@ import (
 )
 
 func NewToken(user models.User, app models.App, duration time.Duration) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
 
-	claims := token.Claims.(jwt.MapClaims)
-	claims["uid"] = user.Id
-	claims["email"] = user.Email
-	claims["name"] = user.Name
-	claims["exp"] = time.Now().Add(duration).Unix()
-	claims["app_id"] = app.Id
-	tokenSrting, err := token.SignedString([]byte(app.Secret))
+	var jwtSecretKey = []byte("GOIDA")
+
+	payload := jwt.MapClaims{
+		"uid":   user.Id,
+		"email": user.Email,
+		"name":  user.Name,
+		"exp":   time.Now().Add(duration).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, payload)
+
+	tokenSrting, err := token.SignedString(jwtSecretKey)
 	if err != nil {
+		slog.Info("signin token error ")
 		return "", err
 	}
+
 	return tokenSrting, nil
 }
