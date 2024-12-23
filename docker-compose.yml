@@ -1,0 +1,57 @@
+services:
+  film_reviews:
+    container_name: film_reviews
+    build:
+      context: .
+      dockerfile: ./cmd/app/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_started
+    restart: always
+    ports:
+      - "8888:8888"
+    networks:
+      - app-network
+    volumes:
+      - ./uploads:/uploads
+  
+  sso:
+    container_name: films_auth
+    build:
+      context: .
+      dockerfile: ./sso/cmd/sso/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_started
+      film_reviews:
+        condition: service_started
+    restart: always
+    ports:
+      - "44444:44444"
+    networks:
+      - app-network
+    volumes:
+      - ./uploads:/uploads
+
+  postgres:
+    container_name: postgres_reviews
+    image: postgres:15.0
+    environment:
+      POSTGRES_DB: reviews
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1906
+    ports:
+      - "127.0.0.1:5433:5432"
+    networks:
+      - app-network
+
+    volumes:
+      - ./db/migrations/dump.sql:/docker-entrypoint-initdb.d/dump.sql
+      - review_data:/var/lib/postgresql/data/
+
+volumes:
+  review_data: 
+
+networks:
+  app-network:
+    driver: bridge
